@@ -102,9 +102,28 @@ const deleteUser = async (id) => {
     };
 }
 
+const getAllUsers = async () => {
+    try {
+      const users = await db.User.findAll();
+      return users.map(user => {
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
+  };
+
+
+
 export default {
     createUser,
     getUserById,
     updateUser,
     deleteUser,
+    getAllUsers
 }
