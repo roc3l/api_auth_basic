@@ -16,18 +16,13 @@ router.post('/create', async (req, res) => {
     res.status(response.code).json(response.message);
 });
 
-router.post('/findUsers', async (req, res) => {
+router.get('/findUsers', async (req, res) => {
     const response = await UserService.findUsers(req.query);
     res.status(response.code).json(response.message);
 });
 
-router.post('/create', async (req, res) => {
-    const response = await UserService.createUser(req);
-    res.status(response.code).json(response.message);
-});
-
 router.post('/bulkCreate', async (req, res) => {
-    const response = await UserService.bulkCreateUser(req);
+    const response = await UserService.bulkCreateUser(req.body.usersList);
     res.status(response.code).json(response.message);
 });
 

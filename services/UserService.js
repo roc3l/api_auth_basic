@@ -1,3 +1,4 @@
+import { where } from 'sequelize';
 import db from '../dist/db/models/index.js';
 import bcrypt from 'bcrypt';
 
@@ -104,26 +105,111 @@ const deleteUser = async (id) => {
 
 const getAllUsers = async () => {
     try {
-      const users = await db.User.findAll();
-      return users.map(user => {
+        const users = await db.User.findAll({
+            where: {
+                status: true
+            }
+        });
         return {
-          id: user.id,
-          username: user.username,
-          email: user.email
+            code: 200,
+            message: users
         };
-      });
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error al conseguir los usuarios', error);
       throw error;
     }
-  };
+};
 
+const findUsers = async (query) => {
+    const filtroWhere = {};
 
+    if (query.status !== undefined) {
+        filtroWhere.status = query.status === "true";
+        if (query.status == "true") {
+            filtroWhere.status = true;
+        }
+        else {
+            filtroWhere.status = false;
+        }
+    }
+
+    if (query.name) {
+        filtroWhere.name = {
+            [db.Sequelize.Op.like]: `%${query.name}%` // Filtra usuarios que contengan el nombre
+        };
+    }
+
+    if (query.createdBefore) {
+        filtroWhere.updatedAt = {
+            [db.Sequelize.Op.lt]: new Date(query.createdBefore) // Filtra usuarios creados antes de esta fecha
+        };
+    }
+
+    if (query.createdAfter) {
+        filtroWhere.updatedAt = {
+            [db.Sequelize.Op.gt]: new Date(query.createdAfter) // Filtra usuarios creados después de esta fecha
+        };
+    }
+
+    return {
+        code: 200,
+        message: await db.User.findAll({
+            where: filtroWhere
+        })
+    };
+};
+
+const bulkCreateUser = async (usersList) => {
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const user of usersList) {
+        const { name, email, password, cellphone } = user;
+
+        try {
+            // Verificar si el usuario ya existe
+            const existingUser = await db.User.findOne({ where: { email } });
+            if (existingUser) {
+                failureCount++;
+                continue;
+            }
+
+            // Encriptar contraseña
+            const encryptedPassword = await bcrypt.hash(password, 10);
+            
+            // Crear usuario
+            try {
+                await db.User.create({
+                    name,
+                    email,
+                    password: encryptedPassword,
+                    cellphone,
+                    status: true
+                });
+                successCount++;
+            } catch (error) {
+                console.error('Error al crear usuario', error);
+                failureCount++;
+            }
+            
+        } catch (error) {
+            console.error('Error al crear usuario', error);
+            failureCount++;
+        }
+    }
+
+    return {
+        code: 200,
+        message: `Creados correctamente: ${successCount}, fallidos: ${failureCount}`
+    };
+};
 
 export default {
     createUser,
     getUserById,
     updateUser,
     deleteUser,
-    getAllUsers
+    getAllUsers,
+    findUsers,
+    bulkCreateUser,
 }
